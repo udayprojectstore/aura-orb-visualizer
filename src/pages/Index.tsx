@@ -25,6 +25,9 @@ const Index = () => {
     { name: "Forest", colors: ["#90EE90", "#3CB371"] },
     { name: "Purple Dream", colors: ["#DDA0DD", "#BA55D3"] },
     { name: "Cyber", colors: ["#00FFFF", "#00CED1"] },
+
+    // ← new Ice theme (blue + pink sampled from your image)
+    { name: "Ice", colors: ["#A3E4FF", "#F6A9FF"] },
   ];
 
   return (
