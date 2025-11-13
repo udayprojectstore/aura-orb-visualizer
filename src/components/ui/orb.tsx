@@ -237,10 +237,19 @@ function Scene({
     const isDark =
       typeof document !== "undefined" &&
       document.documentElement.classList.contains("dark")
+    
+    const initialColors = initialColorsRef.current.slice(0, 6)
+    while (initialColors.length < 6) {
+      initialColors.push(initialColors[initialColors.length - 1] || "#FFFFFF")
+    }
 
     return {
-      uColor1: new THREE.Uniform(new THREE.Color(initialColorsRef.current[0])),
-      uColor2: new THREE.Uniform(new THREE.Color(initialColorsRef.current[1])),
+      uColor1: new THREE.Uniform(new THREE.Color(initialColors[0])),
+      uColor2: new THREE.Uniform(new THREE.Color(initialColors[1])),
+      uColor3: new THREE.Uniform(new THREE.Color(initialColors[2])),
+      uColor4: new THREE.Uniform(new THREE.Color(initialColors[3])),
+      uColor5: new THREE.Uniform(new THREE.Color(initialColors[4])),
+      uColor6: new THREE.Uniform(new THREE.Color(initialColors[5])),
       uOffsets: { value: offsets },
       uPerlinTexture: new THREE.Uniform(perlinNoiseTexture),
       uTime: new THREE.Uniform(0),
