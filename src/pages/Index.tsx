@@ -10,7 +10,9 @@ const Index = () => {
   const [volumeMode, setVolumeMode] = useState<"auto" | "manual">("auto");
   const [manualInput, setManualInput] = useState(0.5);
   const [manualOutput, setManualOutput] = useState(0.5);
-  const [colors, setColors] = useState<[string, string]>(["#CADCFC", "#A0B9D1"]);
+
+  // now supports N stops (string[])
+  const [colors, setColors] = useState<string[]>(["#CADCFC", "#A0B9D1"]);
 
   const stateButtons: { state: AgentState; label: string }[] = [
     { state: null, label: "Idle" },
@@ -19,7 +21,8 @@ const Index = () => {
     { state: "talking", label: "Talking" },
   ];
 
-   const presetColors: Array<{ name: string; colors: [string, string] }> = [
+  // Preset list now accepts arrays of any length (2..6)
+  const presetColors: Array<{ name: string; colors: string[] }> = [
     { name: "Ocean", colors: ["#CADCFC", "#A0B9D1"] },
     { name: "Sunset", colors: ["#FF6B6B", "#FFA07A"] },
     { name: "Forest", colors: ["#90EE90", "#3CB371"] },
@@ -27,7 +30,7 @@ const Index = () => {
     { name: "Cyber", colors: ["#00FFFF", "#00CED1"] },
     { name: "Ice", colors: ["#A3E4FF", "#F6A9FF"] },
 
-    // 💎 New preset — OG Six-Color Metal Aura
+    // OG Six-Color Metal Aura (full 6-stop palette)
     {
       name: "OG Metal Aura",
       colors: [
@@ -37,10 +40,9 @@ const Index = () => {
         "#d4b5ab", // mid neutral
         "#e5c3bd", // silvery blush
         "#d9bcb1", // cool rose metallic
-      ] as unknown as [string, string],
+      ],
     },
   ];
-
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -61,6 +63,7 @@ const Index = () => {
           <div className="lg:col-span-2">
             <Card className="p-6 bg-card border-border">
               <div className="aspect-video w-full rounded-lg overflow-hidden bg-background/50 relative">
+                {/* Pass the full colors array (2..6) */}
                 <Orb
                   colors={colors}
                   agentState={agentState}
@@ -162,13 +165,14 @@ const Index = () => {
                   >
                     <div className="flex items-center gap-3">
                       <div className="flex gap-1">
+                        {/* show first two stops as swatches (works for 2..6) */}
                         <div
                           className="w-4 h-4 rounded-full border border-border"
-                          style={{ backgroundColor: preset.colors[0] }}
+                          style={{ backgroundColor: preset.colors[0] ?? "#000000" }}
                         />
                         <div
                           className="w-4 h-4 rounded-full border border-border"
-                          style={{ backgroundColor: preset.colors[1] }}
+                          style={{ backgroundColor: preset.colors[1] ?? preset.colors[0] ?? "#000000" }}
                         />
                       </div>
                       <span>{preset.name}</span>
@@ -184,8 +188,17 @@ const Index = () => {
                   </label>
                   <input
                     type="color"
-                    value={colors[0]}
-                    onChange={(e) => setColors([e.target.value, colors[1]])}
+                    value={colors[0] ?? "#ffffff"}
+                    onChange={(e) =>
+                      setColors((prev) => {
+                        const next = prev.slice();
+                        // replace first stop
+                        next[0] = e.target.value;
+                        // ensure at least two stops exist
+                        if (next.length === 1) next[1] = e.target.value;
+                        return next;
+                      })
+                    }
                     className="w-full h-10 rounded-md cursor-pointer border border-border"
                   />
                 </div>
@@ -195,11 +208,46 @@ const Index = () => {
                   </label>
                   <input
                     type="color"
-                    value={colors[1]}
-                    onChange={(e) => setColors([colors[0], e.target.value])}
+                    value={colors[1] ?? colors[0] ?? "#ffffff"}
+                    onChange={(e) =>
+                      setColors((prev) => {
+                        const next = prev.slice();
+                        // replace second stop (preserve further stops)
+                        if (next.length >= 2) {
+                          next[1] = e.target.value;
+                        } else {
+                          // if only one stop existed, push new second stop
+                          next[1] = e.target.value;
+                        }
+                        return next;
+                      })
+                    }
                     className="w-full h-10 rounded-md cursor-pointer border border-border"
                   />
                 </div>
+
+                {/* If current colors contain more than 2 stops, show them as small swatches */}
+                {colors.length > 2 && (
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-2 block">
+                      Extra Stops
+                    </label>
+                    <div className="flex gap-2 items-center">
+                      {colors.map((c, i) => (
+                        <div key={i} className="flex flex-col items-center">
+                          <div
+                            className="w-8 h-8 rounded-md border border-border"
+                            style={{ backgroundColor: c }}
+                          />
+                          <span className="text-xs text-muted-foreground mt-1">{i + 1}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      To edit extra stops you can re-apply a preset or modify the Orb call with a custom array.
+                    </p>
+                  </div>
+                )}
               </div>
             </Card>
           </div>
