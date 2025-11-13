@@ -19,16 +19,28 @@ const Index = () => {
     { state: "talking", label: "Talking" },
   ];
 
-  const presetColors: Array<{ name: string; colors: [string, string] }> = [
+   const presetColors: Array<{ name: string; colors: [string, string] }> = [
     { name: "Ocean", colors: ["#CADCFC", "#A0B9D1"] },
     { name: "Sunset", colors: ["#FF6B6B", "#FFA07A"] },
     { name: "Forest", colors: ["#90EE90", "#3CB371"] },
     { name: "Purple Dream", colors: ["#DDA0DD", "#BA55D3"] },
     { name: "Cyber", colors: ["#00FFFF", "#00CED1"] },
-
-    // ← new Ice theme (blue + pink sampled from your image)
     { name: "Ice", colors: ["#A3E4FF", "#F6A9FF"] },
+
+    // 💎 New preset — OG Six-Color Metal Aura
+    {
+      name: "OG Metal Aura",
+      colors: [
+        "#e6c9bf", // soft pink-beige highlight
+        "#d2b5aa", // warm blush
+        "#cbaea3", // subtle tan
+        "#d4b5ab", // mid neutral
+        "#e5c3bd", // silvery blush
+        "#d9bcb1", // cool rose metallic
+      ] as unknown as [string, string],
+    },
   ];
+
 
   return (
     <div className="min-h-screen bg-background text-foreground">
