@@ -182,26 +182,65 @@ const Index = () => {
               </div>
 
               <div className="mt-4 pt-4 border-t border-border space-y-3">
-                <div>
-                  <label className="text-sm text-muted-foreground mb-2 block">
-                    Primary Color
-                  </label>
-                  <input
-                    type="color"
-                    value={colors[0] ?? "#ffffff"}
-                    onChange={(e) =>
-                      setColors((prev) => {
-                        const next = prev.slice();
-                        // replace first stop
-                        next[0] = e.target.value;
-                        // ensure at least two stops exist
-                        if (next.length === 1) next[1] = e.target.value;
-                        return next;
-                      })
-                    }
-                    className="w-full h-10 rounded-md cursor-pointer border border-border"
-                  />
-                </div>
+  <div>
+    <label className="text-sm text-muted-foreground mb-2 block">
+      Primary Color
+    </label>
+    <input
+      type="color"
+      value={colors[0]}
+      onChange={(e) => {
+        const newColors = [...colors];
+        newColors[0] = e.target.value;
+        setColors(newColors);
+      }}
+      className="w-full h-10 rounded-md cursor-pointer border border-border"
+    />
+  </div>
+
+  <div>
+    <label className="text-sm text-muted-foreground mb-2 block">
+      Secondary Color
+    </label>
+    <input
+      type="color"
+      value={colors[1]}
+      onChange={(e) => {
+        const newColors = [...colors];
+        newColors[1] = e.target.value;
+        setColors(newColors);
+      }}
+      className="w-full h-10 rounded-md cursor-pointer border border-border"
+    />
+  </div>
+
+  {colors.length > 2 && (
+    <div>
+      <label className="text-sm text-muted-foreground mb-2 block">
+        Extra Stops
+      </label>
+      <div className="flex flex-wrap gap-2">
+        {colors.slice(2).map((color, i) => (
+          <input
+            key={i}
+            type="color"
+            value={color}
+            onChange={(e) => {
+              const newColors = [...colors];
+              newColors[i + 2] = e.target.value;
+              setColors(newColors);
+            }}
+            className="w-8 h-8 rounded-md cursor-pointer border border-border"
+          />
+        ))}
+      </div>
+      <p className="text-xs mt-2 text-muted-foreground">
+        To edit extra stops, you can re-apply a preset or modify the Orb with a custom array.
+      </p>
+    </div>
+  )}
+</div>
+
                 <div>
                   <label className="text-sm text-muted-foreground mb-2 block">
                     Secondary Color
