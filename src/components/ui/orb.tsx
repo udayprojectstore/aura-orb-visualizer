@@ -6,9 +6,20 @@ import * as THREE from "three"
 
 export type AgentState = null | "thinking" | "listening" | "talking"
 
+/**
+ * PRESETS
+ * Add any named presets here. 'ice' is the blue/pink preset sampled from the image.
+ */
+export const PRESETS: Record<string, string[] | [string, string]> = {
+  ice: ["#A3E4FF", "#F6A9FF"], // main ice-blue + pink
+  iceRich: ["#A3E4FF", "#F6A9FF", "#D1F4FF", "#FFFFFF"], // optional richer palette (first two used)
+  // keep room for additional presets
+}
+
 type OrbProps = {
   colors?: [string, string]
   colorsRef?: React.RefObject<[string, string]>
+  preset?: keyof typeof PRESETS | string
   resizeDebounce?: number
   seed?: number
   agentState?: AgentState
@@ -25,6 +36,7 @@ type OrbProps = {
 export function Orb({
   colors = ["#CADCFC", "#A0B9D1"],
   colorsRef,
+  preset,
   resizeDebounce = 100,
   seed,
   agentState = null,
@@ -37,6 +49,34 @@ export function Orb({
   getOutputVolume,
   className,
 }: OrbProps) {
+  // resolve colors priority:
+  // 1. explicit colors prop
+  // 2. colorsRef.current (if provided)
+  // 3. preset (if provided and matches PRESETS)
+  // 4. fallback default
+  const resolvedColors = useMemo<[string, string]>(() => {
+    // 1: explicit colors prop
+    if (colors && Array.isArray(colors) && colors.length >= 2) {
+      return [colors[0], colors[1]]
+    }
+
+    // 2: colorsRef current
+    if (colorsRef && colorsRef.current && Array.isArray(colorsRef.current) && colorsRef.current.length >= 2) {
+      return [colorsRef.current[0], colorsRef.current[1]]
+    }
+
+    // 3: preset
+    if (preset && typeof preset === "string") {
+      const p = PRESETS[preset]
+      if (p && Array.isArray(p) && p.length >= 2) {
+        return [p[0], p[1]]
+      }
+    }
+
+    // fallback (keep your original default)
+    return ["#CADCFC", "#A0B9D1"]
+  }, [colors, colorsRef?.current, preset])
+
   return (
     <div className={className ?? "relative h-full w-full"}>
       <Canvas
@@ -48,7 +88,7 @@ export function Orb({
         }}
       >
         <Scene
-          colors={colors}
+          colors={resolvedColors}
           colorsRef={colorsRef}
           seed={seed}
           agentState={agentState}
@@ -499,3 +539,4 @@ void main() {
     gl_FragColor = color;
 }
 `
+
