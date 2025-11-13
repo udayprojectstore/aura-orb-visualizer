@@ -9,16 +9,24 @@ export type AgentState = null | "thinking" | "listening" | "talking"
 /**
  * PRESETS
  * Add any named presets here. 'ice' is the blue/pink preset sampled from the image.
+ * 'og6' is the 6-color metallic/brush palette you requested.
  */
 export const PRESETS: Record<string, string[] | [string, string]> = {
   ice: ["#A3E4FF", "#F6A9FF"], // main ice-blue + pink
   iceRich: ["#A3E4FF", "#F6A9FF", "#D1F4FF", "#FFFFFF"], // optional richer palette (first two used)
-  // keep room for additional presets
+  og6: [
+    "#e6c9bf",
+    "#d2b5aa",
+    "#cbaea3",
+    "#d4b5ab",
+    "#e5c3bd",
+    "#d9bcb1",
+  ],
 }
 
 type OrbProps = {
-  colors?: [string, string]
-  colorsRef?: React.RefObject<[string, string]>
+  colors?: [string, string] | string[]
+  colorsRef?: React.RefObject<[string, string] | string[]>
   preset?: keyof typeof PRESETS | string
   resizeDebounce?: number
   seed?: number
@@ -54,26 +62,31 @@ export function Orb({
   // 2. colorsRef.current (if provided)
   // 3. preset (if provided and matches PRESETS)
   // 4. fallback default
-  const resolvedColors = useMemo<[string, string]>(() => {
-    // 1: explicit colors prop
+  const resolvedColors = useMemo<string[]>(() => {
+    // explicit colors prop (normalize to array)
     if (colors && Array.isArray(colors) && colors.length >= 2) {
-      return [colors[0], colors[1]]
+      return colors as string[]
     }
 
-    // 2: colorsRef current
-    if (colorsRef && colorsRef.current && Array.isArray(colorsRef.current) && colorsRef.current.length >= 2) {
-      return [colorsRef.current[0], colorsRef.current[1]]
+    // colorsRef current
+    if (
+      colorsRef &&
+      colorsRef.current &&
+      Array.isArray(colorsRef.current) &&
+      colorsRef.current.length >= 2
+    ) {
+      return colorsRef.current as string[]
     }
 
-    // 3: preset
+    // preset
     if (preset && typeof preset === "string") {
       const p = PRESETS[preset]
       if (p && Array.isArray(p) && p.length >= 2) {
-        return [p[0], p[1]]
+        return p as string[]
       }
     }
 
-    // fallback (keep your original default)
+    // fallback
     return ["#CADCFC", "#A0B9D1"]
   }, [colors, colorsRef?.current, preset])
 
@@ -118,8 +131,8 @@ function Scene({
   getInputVolume,
   getOutputVolume,
 }: {
-  colors: [string, string]
-  colorsRef?: React.RefObject<[string, string]>
+  colors: string[]
+  colorsRef?: React.RefObject<[string, string] | string[]>
   seed?: number
   agentState: AgentState
   volumeMode: "auto" | "manual"
@@ -133,9 +146,13 @@ function Scene({
   const { gl } = useThree()
   const circleRef =
     useRef<THREE.Mesh<THREE.CircleGeometry, THREE.ShaderMaterial>>(null)
-  const initialColorsRef = useRef<[string, string]>(colors)
-  const targetColor1Ref = useRef(new THREE.Color(colors[0]))
-  const targetColor2Ref = useRef(new THREE.Color(colors[1]))
+
+  // store initial colors array (will be used to initialize uniforms)
+  const initialColorsRef = useRef<string[]>(colors)
+  // create 6 target color THREE.Color refs to lerp towards (covers up to 6 stops)
+  const targetColorRefs = useRef<THREE.Color[]>(
+    Array.from({ length: 6 }, (_, i) => new THREE.Color(colors[i % colors.length]))
+  )
   const animSpeedRef = useRef(0.1)
 
   const perlinNoiseTexture = useTexture(
@@ -180,9 +197,13 @@ function Scene({
     [random]
   )
 
+  // whenever incoming colors array changes, update targetColorRefs
   useEffect(() => {
-    targetColor1Ref.current = new THREE.Color(colors[0])
-    targetColor2Ref.current = new THREE.Color(colors[1])
+    initialColorsRef.current = colors.slice()
+    for (let i = 0; i < 6; i++) {
+      const c = colors[i % colors.length] || colors[0]
+      targetColorRefs.current[i].set(c)
+    }
   }, [colors])
 
   useEffect(() => {
@@ -205,9 +226,12 @@ function Scene({
     if (!mat) return
 
     const live = colorsRef?.current
-    if (live) {
-      if (live[0]) targetColor1Ref.current.set(live[0])
-      if (live[1]) targetColor2Ref.current.set(live[1])
+    if (live && Array.isArray(live) && live.length > 0) {
+      // if live colors update, push them into target colors
+      for (let i = 0; i < 6; i++) {
+        const c = live[i % live.length] || live[0]
+        targetColorRefs.current[i].set(c)
+      }
     }
 
     const u = mat.uniforms
@@ -256,8 +280,12 @@ function Scene({
     u.uInputVolume.value = curInRef.current
     u.uOutputVolume.value = curOutRef.current
 
-    u.uColor1.value.lerp(targetColor1Ref.current, 0.08)
-    u.uColor2.value.lerp(targetColor2Ref.current, 0.08)
+    // lerp each uniform color towards its target (supports up to 6 stops)
+    for (let i = 0; i < 6; i++) {
+      const uniformName = `uColor${i + 1}` as keyof typeof u
+      // @ts-ignore - we know these exist and are THREE.Color
+      u[uniformName].value.lerp(targetColorRefs.current[i], 0.08)
+    }
   })
 
   useEffect(() => {
@@ -280,9 +308,15 @@ function Scene({
       typeof document !== "undefined" &&
       document.documentElement.classList.contains("dark")
 
+    // Create up to 6 color uniforms (fall back to first color if not provided)
+    const colorUniforms: Record<string, any> = {}
+    for (let i = 0; i < 6; i++) {
+      const hex = initialColorsRef.current[i % initialColorsRef.current.length] || initialColorsRef.current[0]
+      colorUniforms[`uColor${i + 1}`] = new THREE.Uniform(new THREE.Color(hex))
+    }
+
     return {
-      uColor1: new THREE.Uniform(new THREE.Color(initialColorsRef.current[0])),
-      uColor2: new THREE.Uniform(new THREE.Color(initialColorsRef.current[1])),
+      ...colorUniforms,
       uOffsets: { value: offsets },
       uPerlinTexture: new THREE.Uniform(perlinNoiseTexture),
       uTime: new THREE.Uniform(0),
@@ -299,7 +333,7 @@ function Scene({
       <circleGeometry args={[3.5, 64]} />
       <shaderMaterial
         uniforms={uniforms}
-        fragmentShader={fragmentShader}
+        fragmentShader={fragmentShaderMulti6}
         vertexShader={vertexShader}
         transparent={true}
       />
@@ -335,13 +369,18 @@ void main() {
 }
 `
 
-const fragmentShader = /* glsl */ `
+// Extended fragment shader that supports up to 6 color stops
+const fragmentShaderMulti6 = /* glsl */ `
 uniform float uTime;
 uniform float uAnimation;
 uniform float uInverted;
 uniform float uOffsets[7];
 uniform vec3 uColor1;
 uniform vec3 uColor2;
+uniform vec3 uColor3;
+uniform vec3 uColor4;
+uniform vec3 uColor5;
+uniform vec3 uColor6;
 uniform float uInputVolume;
 uniform float uOutputVolume;
 uniform float uOpacity;
@@ -367,14 +406,18 @@ bool drawOval(vec2 polarUv, vec2 polarCenter, float a, float b, bool reverseGrad
     return false;
 }
 
-// Map grayscale value to a 4-color ramp (color1, color2, color3, color4)
-vec3 colorRamp(float grayscale, vec3 color1, vec3 color2, vec3 color3, vec3 color4) {
-    if (grayscale < 0.33) {
-        return mix(color1, color2, grayscale * 3.0);
-    } else if (grayscale < 0.66) {
-        return mix(color2, color3, (grayscale - 0.33) * 3.0);
+// Map grayscale value to a 6-color ramp
+vec3 ramp6(float g, vec3 c1, vec3 c2, vec3 c3, vec3 c4, vec3 c5, vec3 c6) {
+    if (g < 0.1666667) {
+        return mix(c1, c2, g / 0.1666667);
+    } else if (g < 0.3333334) {
+        return mix(c2, c3, (g - 0.1666667) / 0.1666667);
+    } else if (g < 0.5) {
+        return mix(c3, c4, (g - 0.3333334) / 0.1666667);
+    } else if (g < 0.6666667) {
+        return mix(c4, c5, (g - 0.5) / 0.1666667);
     } else {
-        return mix(color3, color4, (grayscale - 0.66) * 3.0);
+        return mix(c5, c6, (g - 0.6666667) / 0.3333333);
     }
 }
 
@@ -448,13 +491,9 @@ void main() {
     if (theta < 0.0) theta += 2.0 * PI; // Normalize theta to [0, 2*PI]
     
     // Decomposed angle is used for sampling noise textures without seams:
-    // float noise = mix(sample(decomposed.x), sample(decomposed.y), decomposed.z);
     vec3 decomposed = vec3(
-        // angle in the range [0, 1]
         theta / (2.0 * PI),
-        // angle offset by 180 degrees in the range [1, 2]
         mod(theta / (2.0 * PI) + 0.5, 1.0) + 1.0,
-        // mixing factor between two noises
         abs(theta / PI - 1.0)
     );
     
@@ -484,7 +523,6 @@ void main() {
         b = noise * mix(3.5, 2.5, uInputVolume); // Increased height for fuller appearance
         bool reverseGradient = (i % 2 == 1); // Reverse gradient for every second oval
         
-        // Calculate the distance in polar coordinates
         float distTheta = min(
             abs(theta - centers[i]),
             min(
@@ -495,11 +533,9 @@ void main() {
         float distRadius = radius;
         float softness = 0.6; // Increased softness for flatter, less pronounced edges
         
-        // Check if the pixel is inside the oval in polar coordinates
         if (drawOval(vec2(distTheta, distRadius), vec2(0.0, 0.0), a, b, reverseGradient, softness, ovalColor)) {
-            // Blend the oval color with the existing color
             color.rgb = mix(color.rgb, ovalColor.rgb, ovalColor.a);
-            color.a = max(color.a, ovalColor.a); // Max alpha
+            color.a = max(color.a, ovalColor.a);
         }
     }
     
@@ -513,7 +549,6 @@ void main() {
     float opacity1 = mix(0.2, 0.6, uInputVolume);
     float opacity2 = mix(0.15, 0.45, uInputVolume);
     
-    // Blend both rings
     float ringAlpha1 = (inputRadius2 >= ringRadius1) ? opacity1 : 0.0;
     float ringAlpha2 = smoothstep(ringRadius2 - 0.05, ringRadius2 + 0.05, inputRadius1) * opacity2;
     
@@ -523,15 +558,17 @@ void main() {
     vec3 ringColor = vec3(1.0); // White ring color
     color.rgb = 1.0 - (1.0 - color.rgb) * (1.0 - ringColor * totalRingAlpha);
     
-    // Define colours to ramp against greyscale (could increase the amount of colours in the ramp)
-    vec3 color1 = vec3(0.0, 0.0, 0.0); // Black
-    vec3 color2 = uColor1; // Darker Color
-    vec3 color3 = uColor2; // Lighter Color
-    vec3 color4 = vec3(1.0, 1.0, 1.0); // White
+    // Define 6 colours to ramp against (from uniforms)
+    vec3 c1 = uColor1;
+    vec3 c2 = uColor2;
+    vec3 c3 = uColor3;
+    vec3 c4 = uColor4;
+    vec3 c5 = uColor5;
+    vec3 c6 = uColor6;
     
     // Convert grayscale color to the color ramp
     float luminance = mix(color.r, 1.0 - color.r, uInverted);
-    color.rgb = colorRamp(luminance, color1, color2, color3, color4); // Apply the color ramp
+    color.rgb = ramp6(luminance, c1, c2, c3, c4, c5, c6);
     
     // Apply fade-in opacity
     color.a *= uOpacity;
