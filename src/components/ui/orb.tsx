@@ -7,8 +7,8 @@ import * as THREE from "three"
 export type AgentState = null | "thinking" | "listening" | "talking"
 
 type OrbProps = {
-  colors?: string[]
-  colorsRef?: React.RefObject<string[]>
+  colors?: [string, string]
+  colorsRef?: React.RefObject<[string, string]>
   resizeDebounce?: number
   seed?: number
   agentState?: AgentState
@@ -78,8 +78,8 @@ function Scene({
   getInputVolume,
   getOutputVolume,
 }: {
-  colors: string[]
-  colorsRef?: React.RefObject<string[]>
+  colors: [string, string]
+  colorsRef?: React.RefObject<[string, string]>
   seed?: number
   agentState: AgentState
   volumeMode: "auto" | "manual"
@@ -93,8 +93,9 @@ function Scene({
   const { gl } = useThree()
   const circleRef =
     useRef<THREE.Mesh<THREE.CircleGeometry, THREE.ShaderMaterial>>(null)
-  const initialColorsRef = useRef<string[]>(colors)
-  const targetColorRefs = useRef(colors.slice(0, 6).map(c => new THREE.Color(c)))
+  const initialColorsRef = useRef<[string, string]>(colors)
+  const targetColor1Ref = useRef(new THREE.Color(colors[0]))
+  const targetColor2Ref = useRef(new THREE.Color(colors[1]))
   const animSpeedRef = useRef(0.1)
 
   const perlinNoiseTexture = useTexture(
@@ -140,7 +141,8 @@ function Scene({
   )
 
   useEffect(() => {
-    targetColorRefs.current = colors.slice(0, 6).map(c => new THREE.Color(c))
+    targetColor1Ref.current = new THREE.Color(colors[0])
+    targetColor2Ref.current = new THREE.Color(colors[1])
   }, [colors])
 
   useEffect(() => {
@@ -164,7 +166,8 @@ function Scene({
 
     const live = colorsRef?.current
     if (live) {
-      targetColorRefs.current = live.slice(0, 6).map(c => new THREE.Color(c))
+      if (live[0]) targetColor1Ref.current.set(live[0])
+      if (live[1]) targetColor2Ref.current.set(live[1])
     }
 
     const u = mat.uniforms
@@ -213,9 +216,8 @@ function Scene({
     u.uInputVolume.value = curInRef.current
     u.uOutputVolume.value = curOutRef.current
 
-    for (let i = 0; i < Math.min(6, targetColorRefs.current.length); i++) {
-      u[`uColor${i + 1}`].value.lerp(targetColorRefs.current[i], 0.08)
-    }
+    u.uColor1.value.lerp(targetColor1Ref.current, 0.08)
+    u.uColor2.value.lerp(targetColor2Ref.current, 0.08)
   })
 
   useEffect(() => {
@@ -237,19 +239,10 @@ function Scene({
     const isDark =
       typeof document !== "undefined" &&
       document.documentElement.classList.contains("dark")
-    
-    const initialColors = initialColorsRef.current.slice(0, 6)
-    while (initialColors.length < 6) {
-      initialColors.push(initialColors[initialColors.length - 1] || "#FFFFFF")
-    }
 
     return {
-      uColor1: new THREE.Uniform(new THREE.Color(initialColors[0])),
-      uColor2: new THREE.Uniform(new THREE.Color(initialColors[1])),
-      uColor3: new THREE.Uniform(new THREE.Color(initialColors[2])),
-      uColor4: new THREE.Uniform(new THREE.Color(initialColors[3])),
-      uColor5: new THREE.Uniform(new THREE.Color(initialColors[4])),
-      uColor6: new THREE.Uniform(new THREE.Color(initialColors[5])),
+      uColor1: new THREE.Uniform(new THREE.Color(initialColorsRef.current[0])),
+      uColor2: new THREE.Uniform(new THREE.Color(initialColorsRef.current[1])),
       uOffsets: { value: offsets },
       uPerlinTexture: new THREE.Uniform(perlinNoiseTexture),
       uTime: new THREE.Uniform(0),
@@ -309,10 +302,6 @@ uniform float uInverted;
 uniform float uOffsets[7];
 uniform vec3 uColor1;
 uniform vec3 uColor2;
-uniform vec3 uColor3;
-uniform vec3 uColor4;
-uniform vec3 uColor5;
-uniform vec3 uColor6;
 uniform float uInputVolume;
 uniform float uOutputVolume;
 uniform float uOpacity;
@@ -494,30 +483,15 @@ void main() {
     vec3 ringColor = vec3(1.0); // White ring color
     color.rgb = 1.0 - (1.0 - color.rgb) * (1.0 - ringColor * totalRingAlpha);
     
-    // Define colours to ramp against greyscale using provided colors
-    vec3 color1 = uColor1;
-    vec3 color2 = uColor2;
-    vec3 color3 = uColor3;
-    vec3 color4 = uColor4;
+    // Define colours to ramp against greyscale (could increase the amount of colours in the ramp)
+    vec3 color1 = vec3(0.0, 0.0, 0.0); // Black
+    vec3 color2 = uColor1; // Darker Color
+    vec3 color3 = uColor2; // Lighter Color
+    vec3 color4 = vec3(1.0, 1.0, 1.0); // White
     
     // Convert grayscale color to the color ramp
     float luminance = mix(color.r, 1.0 - color.r, uInverted);
-    
-    // Extended color ramp for 6 colors
-    vec3 finalColor;
-    if (luminance < 0.2) {
-        finalColor = mix(color1, color2, luminance * 5.0);
-    } else if (luminance < 0.4) {
-        finalColor = mix(color2, color3, (luminance - 0.2) * 5.0);
-    } else if (luminance < 0.6) {
-        finalColor = mix(color3, color4, (luminance - 0.4) * 5.0);
-    } else if (luminance < 0.8) {
-        finalColor = mix(color4, uColor5, (luminance - 0.6) * 5.0);
-    } else {
-        finalColor = mix(uColor5, uColor6, (luminance - 0.8) * 5.0);
-    }
-    
-    color.rgb = finalColor;
+    color.rgb = colorRamp(luminance, color1, color2, color3, color4); // Apply the color ramp
     
     // Apply fade-in opacity
     color.a *= uOpacity;

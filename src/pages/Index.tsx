@@ -10,7 +10,7 @@ const Index = () => {
   const [volumeMode, setVolumeMode] = useState<"auto" | "manual">("auto");
   const [manualInput, setManualInput] = useState(0.5);
   const [manualOutput, setManualOutput] = useState(0.5);
-  const [colors, setColors] = useState<string[]>(["#CADCFC", "#A0B9D1"]);
+  const [colors, setColors] = useState<[string, string]>(["#CADCFC", "#A0B9D1"]);
 
   const stateButtons: { state: AgentState; label: string }[] = [
     { state: null, label: "Idle" },
@@ -19,13 +19,12 @@ const Index = () => {
     { state: "talking", label: "Talking" },
   ];
 
-  const presetColors: Array<{ name: string; colors: string[] }> = [
+  const presetColors: Array<{ name: string; colors: [string, string] }> = [
     { name: "Ocean", colors: ["#CADCFC", "#A0B9D1"] },
     { name: "Sunset", colors: ["#FF6B6B", "#FFA07A"] },
     { name: "Forest", colors: ["#90EE90", "#3CB371"] },
     { name: "Purple Dream", colors: ["#DDA0DD", "#BA55D3"] },
     { name: "Cyber", colors: ["#00FFFF", "#00CED1"] },
-    { name: "Out of the World", colors: ["#98C2EF", "#D9E3FB", "#7B777A", "#33303A", "#1B1018", "#010000"] },
   ];
 
   return (
@@ -148,13 +147,14 @@ const Index = () => {
                   >
                     <div className="flex items-center gap-3">
                       <div className="flex gap-1">
-                        {preset.colors.slice(0, 6).map((color, idx) => (
-                          <div
-                            key={idx}
-                            className="w-4 h-4 rounded-full border border-border"
-                            style={{ backgroundColor: color }}
-                          />
-                        ))}
+                        <div
+                          className="w-4 h-4 rounded-full border border-border"
+                          style={{ backgroundColor: preset.colors[0] }}
+                        />
+                        <div
+                          className="w-4 h-4 rounded-full border border-border"
+                          style={{ backgroundColor: preset.colors[1] }}
+                        />
                       </div>
                       <span>{preset.name}</span>
                     </div>
@@ -163,23 +163,28 @@ const Index = () => {
               </div>
 
               <div className="mt-4 pt-4 border-t border-border space-y-3">
-                {colors.slice(0, 6).map((color, idx) => (
-                  <div key={idx}>
-                    <label className="text-sm text-muted-foreground mb-2 block">
-                      Color {idx + 1}
-                    </label>
-                    <input
-                      type="color"
-                      value={color}
-                      onChange={(e) => {
-                        const newColors = [...colors]
-                        newColors[idx] = e.target.value
-                        setColors(newColors)
-                      }}
-                      className="w-full h-10 rounded-md cursor-pointer border border-border"
-                    />
-                  </div>
-                ))}
+                <div>
+                  <label className="text-sm text-muted-foreground mb-2 block">
+                    Primary Color
+                  </label>
+                  <input
+                    type="color"
+                    value={colors[0]}
+                    onChange={(e) => setColors([e.target.value, colors[1]])}
+                    className="w-full h-10 rounded-md cursor-pointer border border-border"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground mb-2 block">
+                    Secondary Color
+                  </label>
+                  <input
+                    type="color"
+                    value={colors[1]}
+                    onChange={(e) => setColors([colors[0], e.target.value])}
+                    className="w-full h-10 rounded-md cursor-pointer border border-border"
+                  />
+                </div>
               </div>
             </Card>
           </div>
