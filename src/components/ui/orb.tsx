@@ -38,6 +38,8 @@ type OrbProps = {
   outputVolumeRef?: React.RefObject<number>
   getInputVolume?: () => number
   getOutputVolume?: () => number
+  jitterEnabled?: boolean
+  jitterIntensity?: number
   className?: string
 }
 
@@ -55,6 +57,8 @@ export function Orb({
   outputVolumeRef,
   getInputVolume,
   getOutputVolume,
+  jitterEnabled = true,
+  jitterIntensity = 0.5,
   className,
 }: OrbProps) {
   // resolve colors priority:
@@ -112,6 +116,8 @@ export function Orb({
           outputVolumeRef={outputVolumeRef}
           getInputVolume={getInputVolume}
           getOutputVolume={getOutputVolume}
+          jitterEnabled={jitterEnabled}
+          jitterIntensity={jitterIntensity}
         />
       </Canvas>
     </div>
@@ -130,6 +136,8 @@ function Scene({
   outputVolumeRef,
   getInputVolume,
   getOutputVolume,
+  jitterEnabled,
+  jitterIntensity,
 }: {
   colors: string[]
   colorsRef?: React.RefObject<[string, string] | string[]>
@@ -142,6 +150,8 @@ function Scene({
   outputVolumeRef?: React.RefObject<number>
   getInputVolume?: () => number
   getOutputVolume?: () => number
+  jitterEnabled: boolean
+  jitterIntensity: number
 }) {
   const { gl } = useThree()
   const circleRef =
@@ -325,8 +335,10 @@ function Scene({
       uInputVolume: new THREE.Uniform(0),
       uOutputVolume: new THREE.Uniform(0),
       uOpacity: new THREE.Uniform(0),
+      uJitterEnabled: new THREE.Uniform(jitterEnabled ? 1 : 0),
+      uJitterIntensity: new THREE.Uniform(jitterIntensity),
     }
-  }, [perlinNoiseTexture, offsets])
+  }, [perlinNoiseTexture, offsets, jitterEnabled, jitterIntensity])
 
   return (
     <mesh ref={circleRef}>
@@ -384,6 +396,8 @@ uniform vec3 uColor6;
 uniform float uInputVolume;
 uniform float uOutputVolume;
 uniform float uOpacity;
+uniform float uJitterEnabled;
+uniform float uJitterIntensity;
 uniform sampler2D uPerlinTexture;
 
 varying vec2 vUv;
@@ -406,18 +420,19 @@ bool drawOval(vec2 polarUv, vec2 polarCenter, float a, float b, bool reverseGrad
     return false;
 }
 
-// Map grayscale value to a 6-color ramp
+// Map grayscale value to a 6-color ramp with equal distribution
 vec3 ramp6(float g, vec3 c1, vec3 c2, vec3 c3, vec3 c4, vec3 c5, vec3 c6) {
-    if (g < 0.1666667) {
-        return mix(c1, c2, g / 0.1666667);
-    } else if (g < 0.3333334) {
-        return mix(c2, c3, (g - 0.1666667) / 0.1666667);
-    } else if (g < 0.5) {
-        return mix(c3, c4, (g - 0.3333334) / 0.1666667);
-    } else if (g < 0.6666667) {
-        return mix(c4, c5, (g - 0.5) / 0.1666667);
+    float step = 0.2; // Equal 20% distribution for each color
+    if (g < step) {
+        return mix(c1, c2, g / step);
+    } else if (g < step * 2.0) {
+        return mix(c2, c3, (g - step) / step);
+    } else if (g < step * 3.0) {
+        return mix(c3, c4, (g - step * 2.0) / step);
+    } else if (g < step * 4.0) {
+        return mix(c4, c5, (g - step * 3.0) / step);
     } else {
-        return mix(c5, c6, (g - 0.6666667) / 0.3333333);
+        return mix(c5, c6, (g - step * 4.0) / step);
     }
 }
 
@@ -497,9 +512,10 @@ void main() {
         abs(theta / PI - 1.0)
     );
     
-    // Add noise to the angle for a flow-like distortion (reduced for flatter look)
+    // Add noise to the angle for a flow-like distortion with jitter control
     float noise = flow(decomposed, radius * 0.03 - uAnimation * 0.2) - 0.5;
-    theta += noise * mix(0.08, 0.25, uOutputVolume);
+    float jitterAmount = uJitterEnabled * uJitterIntensity * mix(0.08, 0.25, uOutputVolume);
+    theta += noise * jitterAmount;
     
     // Initialize the base color to white
     vec4 color = vec4(1.0, 1.0, 1.0, 1.0);

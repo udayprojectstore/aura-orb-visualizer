@@ -11,6 +11,8 @@ const Index = () => {
   const [manualInput, setManualInput] = useState(0.5);
   const [manualOutput, setManualOutput] = useState(0.5);
   const [colors, setColors] = useState<string[]>(["#CADCFC", "#A0B9D1", "#E8F3FF", "#6B9BD1", "#4A7BA7", "#89B5E0"]);
+  const [jitterEnabled, setJitterEnabled] = useState(true);
+  const [jitterIntensity, setJitterIntensity] = useState(0.5);
 
   const stateButtons: { state: AgentState; label: string }[] = [
     { state: null, label: "Idle" },
@@ -96,6 +98,8 @@ const Index = () => {
                   volumeMode={volumeMode}
                   manualInput={manualInput}
                   manualOutput={manualOutput}
+                  jitterEnabled={jitterEnabled}
+                  jitterIntensity={jitterIntensity}
                   className="w-full h-full"
                 />
                 <div className="absolute top-4 right-4">
@@ -176,6 +180,38 @@ const Index = () => {
                   </div>
                 </div>
               )}
+            </Card>
+
+            {/* Jitter Control */}
+            <Card className="p-6 bg-card border-border">
+              <h3 className="text-lg font-semibold mb-4">Jitter Effect</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">Enable Jitter</label>
+                  <Button
+                    onClick={() => setJitterEnabled(!jitterEnabled)}
+                    variant={jitterEnabled ? "default" : "outline"}
+                    size="sm"
+                  >
+                    {jitterEnabled ? "ON" : "OFF"}
+                  </Button>
+                </div>
+                {jitterEnabled && (
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-2 block">
+                      Intensity: {jitterIntensity.toFixed(2)}
+                    </label>
+                    <Slider
+                      value={[jitterIntensity]}
+                      onValueChange={([value]) => setJitterIntensity(value)}
+                      min={0}
+                      max={2}
+                      step={0.1}
+                      className="w-full"
+                    />
+                  </div>
+                )}
+              </div>
             </Card>
 
             {/* Color Presets */}
