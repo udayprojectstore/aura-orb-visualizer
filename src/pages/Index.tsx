@@ -10,7 +10,7 @@ const Index = () => {
   const [volumeMode, setVolumeMode] = useState<"auto" | "manual">("auto");
   const [manualInput, setManualInput] = useState(0.5);
   const [manualOutput, setManualOutput] = useState(0.5);
-  const [colors, setColors] = useState<[string, string]>(["#CADCFC", "#A0B9D1"]);
+  const [colors, setColors] = useState<string[]>(["#CADCFC", "#A0B9D1", "#E8F3FF", "#6B9BD1", "#4A7BA7", "#89B5E0"]);
 
   const stateButtons: { state: AgentState; label: string }[] = [
     { state: null, label: "Idle" },
@@ -19,25 +19,54 @@ const Index = () => {
     { state: "talking", label: "Talking" },
   ];
 
-   const presetColors: Array<{ name: string; colors: [string, string] }> = [
-    { name: "Ocean", colors: ["#CADCFC", "#A0B9D1"] },
-    { name: "Sunset", colors: ["#FF6B6B", "#FFA07A"] },
-    { name: "Forest", colors: ["#90EE90", "#3CB371"] },
-    { name: "Purple Dream", colors: ["#DDA0DD", "#BA55D3"] },
-    { name: "Cyber", colors: ["#00FFFF", "#00CED1"] },
-    { name: "Ice", colors: ["#A3E4FF", "#F6A9FF"] },
-
-    // 💎 New preset — OG Six-Color Metal Aura
-    {
-      name: "OG Metal Aura",
-      colors: [
-        "#e6c9bf", // soft pink-beige highlight
-        "#d2b5aa", // warm blush
-        "#cbaea3", // subtle tan
-        "#d4b5ab", // mid neutral
-        "#e5c3bd", // silvery blush
-        "#d9bcb1", // cool rose metallic
-      ] as unknown as [string, string],
+  const presetColors: Array<{ name: string; colors: string[] }> = [
+    { 
+      name: "Ocean Breeze", 
+      colors: ["#CADCFC", "#A0B9D1", "#E8F3FF", "#6B9BD1", "#4A7BA7", "#89B5E0"] 
+    },
+    { 
+      name: "Sunset Glow", 
+      colors: ["#FF6B6B", "#FFA07A", "#FFD93D", "#FF8E53", "#FA5F55", "#FFCBA4"] 
+    },
+    { 
+      name: "Forest Mist", 
+      colors: ["#90EE90", "#3CB371", "#98D8C8", "#2D8B57", "#6FDC8C", "#B4EEB4"] 
+    },
+    { 
+      name: "Purple Dream", 
+      colors: ["#DDA0DD", "#BA55D3", "#E6B0FF", "#9B59B6", "#D68FD6", "#C68FE6"] 
+    },
+    { 
+      name: "Cyber Pulse", 
+      colors: ["#00FFFF", "#00CED1", "#40E0D0", "#00B8D4", "#5DDEF4", "#26C6DA"] 
+    },
+    { 
+      name: "Midnight Aurora", 
+      colors: ["#1A1A2E", "#0F3460", "#16213E", "#533483", "#7B2CBF", "#9D4EDD"] 
+    },
+    { 
+      name: "Tropical Paradise", 
+      colors: ["#FF6B9D", "#FEC260", "#12CBC4", "#FDA7DF", "#F38181", "#AA96DA"] 
+    },
+    { 
+      name: "Golden Hour", 
+      colors: ["#F4A261", "#E76F51", "#E9C46A", "#D4A373", "#F2CC8F", "#E07A5F"] 
+    },
+    { 
+      name: "Northern Lights", 
+      colors: ["#A8DADC", "#457B9D", "#1D3557", "#2A9D8F", "#264653", "#81B29A"] 
+    },
+    { 
+      name: "Rose Gold", 
+      colors: ["#e6c9bf", "#d2b5aa", "#cbaea3", "#d4b5ab", "#e5c3bd", "#d9bcb1"] 
+    },
+    { 
+      name: "Ice Crystal", 
+      colors: ["#A3E4FF", "#F6A9FF", "#D1F4FF", "#E8B4F8", "#B8E6FF", "#FFFFFF"] 
+    },
+    { 
+      name: "Lava Flow", 
+      colors: ["#FF4500", "#FF6347", "#FF8C00", "#DC143C", "#B22222", "#8B0000"] 
     },
   ];
 
@@ -160,46 +189,66 @@ const Index = () => {
                     variant="outline"
                     className="w-full justify-start"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="flex gap-1">
-                        <div
-                          className="w-4 h-4 rounded-full border border-border"
-                          style={{ backgroundColor: preset.colors[0] }}
-                        />
-                        <div
-                          className="w-4 h-4 rounded-full border border-border"
-                          style={{ backgroundColor: preset.colors[1] }}
-                        />
+                    <div className="flex items-center gap-3 w-full">
+                      <div className="flex gap-1 flex-wrap">
+                        {preset.colors.slice(0, 6).map((color, idx) => (
+                          <div
+                            key={idx}
+                            className="w-4 h-4 rounded-full border border-border"
+                            style={{ backgroundColor: color }}
+                          />
+                        ))}
                       </div>
-                      <span>{preset.name}</span>
+                      <span className="flex-1">{preset.name}</span>
                     </div>
                   </Button>
                 ))}
               </div>
 
               <div className="mt-4 pt-4 border-t border-border space-y-3">
-                <div>
-                  <label className="text-sm text-muted-foreground mb-2 block">
-                    Primary Color
-                  </label>
-                  <input
-                    type="color"
-                    value={colors[0]}
-                    onChange={(e) => setColors([e.target.value, colors[1]])}
-                    className="w-full h-10 rounded-md cursor-pointer border border-border"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-muted-foreground mb-2 block">
-                    Secondary Color
-                  </label>
-                  <input
-                    type="color"
-                    value={colors[1]}
-                    onChange={(e) => setColors([colors[0], e.target.value])}
-                    className="w-full h-10 rounded-md cursor-pointer border border-border"
-                  />
-                </div>
+                <div className="text-sm font-medium mb-3">Custom Colors</div>
+                {colors.map((color, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <label className="text-sm text-muted-foreground min-w-[60px]">
+                      Color {index + 1}
+                    </label>
+                    <input
+                      type="color"
+                      value={color}
+                      onChange={(e) => {
+                        const newColors = [...colors];
+                        newColors[index] = e.target.value;
+                        setColors(newColors);
+                      }}
+                      className="flex-1 h-10 rounded-md cursor-pointer border border-border"
+                    />
+                    {colors.length > 2 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const newColors = colors.filter((_, i) => i !== index);
+                          setColors(newColors);
+                        }}
+                        className="h-10 w-10 p-0"
+                      >
+                        ×
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                {colors.length < 6 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setColors([...colors, "#FFFFFF"]);
+                    }}
+                    className="w-full"
+                  >
+                    + Add Color
+                  </Button>
+                )}
               </div>
             </Card>
           </div>
